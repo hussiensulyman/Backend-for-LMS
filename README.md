@@ -63,7 +63,7 @@ Ensure you have the following installed:
 1. **Clone the Repository**:
 
    ```bash
-   git clone https://github.com/yourusername/lms-project.git  
+   git clone https://github.com/hussiensulyman/Backend-for-LMS.git
    cd lms-project  
    ```
 
