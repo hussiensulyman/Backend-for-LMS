@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("student")
+  createdAt DateTime @default(now())
+
+  courses   Course[]      @relation("InstructorCourses")
+  enrollments Enrollment[]
+}
+
+model Course {
+  id          Int        @id @default(autoincrement())
+  title       String
+  description String
+  code        String     @unique
+  instructor  User       @relation(fields: [instructorId], references: [id], name: "InstructorCourses")
+  instructorId Int
+  lessons     Lesson[]
+  enrollments Enrollment[]
+  createdAt   DateTime   @default(now())
+}
+
+model Lesson {
+  id        Int      @id @default(autoincrement())
+  title     String
+  description String
+  course    Course   @relation(fields: [courseId], references: [id])
+  courseId  Int
+  createdAt DateTime @default(now())
+}
+
+model Enrollment {
+  id        Int      @id @default(autoincrement())
+  student   User     @relation(fields: [studentId], references: [id])
+  studentId Int
+  course    Course   @relation(fields: [courseId], references: [id])
+  courseId  Int
+  createdAt DateTime @default(now())
+}
+
+model PaymentTransaction {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  provider   String
+  providerId String   @unique
+  amount     Int
+  currency   String
+  status     String
+  meta       Json?
+  createdAt  DateTime @default(now())
+}
+
+model Subscription {
+  id         Int      @id @default(autoincrement())
+  provider   String
+  providerId String   @unique
+  customerId String
+  priceId    String
+  status     String
+  createdAt  DateTime @default(now())
+}
+
+model Video {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  providerUrl String?   // location or external provider id
+  duration    Int?      // seconds
+  createdAt   DateTime  @default(now())
+  comments     VideoComment[]
+}
+
+model VideoComment {
+  id        Int      @id @default(autoincrement())
+  video     Video    @relation(fields: [videoId], references: [id])
+  videoId   Int
+  userId    Int
+  timestamp Int?     // seconds into the video
+  content   String
+  createdAt DateTime @default(now())
+}
+
