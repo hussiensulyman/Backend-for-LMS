@@ -1,6 +1,22 @@
 const request = require('supertest');
 const app = require('../server');
 const User = require('../models/User');
+const connectDB = require('../config/db');
+const { dbType } = require('../config/env');
+const mongoose = require('mongoose');
+const { prisma } = require('../core/prisma');
+
+beforeAll(async () => {
+  await connectDB();
+});
+
+afterAll(async () => {
+  if (dbType === 'mysql') {
+    await prisma.$disconnect();
+  } else {
+    await mongoose.connection.close();
+  }
+});
 
 describe('Auth Endpoints', () => {
   it('should register a new user', async () => {

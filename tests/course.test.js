@@ -2,6 +2,22 @@ const request = require('supertest');
 const app = require('../server');
 const Course = require('../models/Course');
 const User = require('../models/User');
+const connectDB = require('../config/db');
+const { dbType } = require('../config/env');
+const mongoose = require('mongoose');
+const { prisma } = require('../core/prisma');
+
+beforeAll(async () => {
+  await connectDB();
+});
+
+afterAll(async () => {
+  if (dbType === 'mysql') {
+    await prisma.$disconnect();
+  } else {
+    await mongoose.connection.close();
+  }
+});
 
 describe('Course Endpoints', () => {
   it('should create a new course', async () => {
