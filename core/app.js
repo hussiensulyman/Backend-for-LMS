@@ -32,7 +32,9 @@ function createApp() {
   app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }));
 
   // Static files
-  app.use('/uploads', express.static(fileUploadPath));
+  if (fileUploadPath) {
+    app.use('/uploads', express.static(fileUploadPath));
+  }
 
   // Serve API docs (Swagger UI) from docs/swagger.html
   const docsDir = path.join(__dirname, '..', 'docs');
