@@ -1,0 +1,592 @@
+openapi: 3.0.0
+info:
+  title: LMS Backend API
+  version: 1.0.0
+  description: API for managing users, courses, assignments, lessons, quizzes, resources, forum posts, payments, videos, notifications, and progress.
+servers:
+  - url: http://localhost:5000
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error: { type: string }
+        message: { type: string }
+        details: { type: object }
+    PaginationMeta:
+      type: object
+      properties:
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        name: { type: string }
+        role: { type: string }
+    AuthRequest:
+      type: object
+      properties:
+        email: { type: string }
+        password: { type: string }
+      required: [email, password]
+    AuthResponse:
+      type: object
+      properties:
+        token: { type: string }
+        user: { $ref: '#/components/schemas/User' }
+    Course:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        published: { type: boolean }
+        instructorId: { type: string }
+    CourseInput:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        published: { type: boolean }
+      required: [title]
+    LessonInput:
+      type: object
+      properties:
+        courseId: { type: string }
+        title: { type: string }
+        content: { type: string }
+      required: [title]
+    Assignment:
+      type: object
+      properties:
+        id: { type: string }
+        courseId: { type: string }
+        title: { type: string }
+        description: { type: string }
+        dueDate: { type: string, format: date-time }
+    AssignmentInput:
+      type: object
+      properties:
+        courseId: { type: string }
+        title: { type: string }
+        description: { type: string }
+        dueDate: { type: string, format: date-time }
+      required: [courseId, title]
+    QuizInput:
+      type: object
+      properties:
+        title: { type: string }
+        questions: { type: array, items: { type: object } }
+      required: [title]
+    QuizSubmission:
+      type: object
+      properties:
+        answers: { type: array, items: { type: object } }
+    ResourceInput:
+      type: object
+      properties:
+        url: { type: string }
+        title: { type: string }
+        description: { type: string }
+      required: [url, title]
+    ForumPost:
+      type: object
+      properties:
+        id: { type: string }
+        courseId: { type: string }
+        authorId: { type: string }
+        title: { type: string }
+        content: { type: string }
+    ForumPostInput:
+      type: object
+      properties:
+        title: { type: string }
+        content: { type: string }
+      required: [title, content]
+    Notification:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        message: { type: string }
+        read: { type: boolean }
+    NotificationInput:
+      type: object
+      properties:
+        userId: { type: string }
+        message: { type: string }
+      required: [userId, message]
+    EnrollmentRequest:
+      type: object
+      properties:
+        courseId: { type: string }
+        enrollmentCode: { type: string }
+      required: [courseId]
+    EnrollmentResponse:
+      type: object
+      properties:
+        message: { type: string }
+        enrollmentId: { type: string }
+    Progress:
+      type: object
+      properties:
+        courseId: { type: string }
+        userId: { type: string }
+        completion: { type: number }
+    Video:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        sourceUrl: { type: string }
+        metadata: { type: object }
+    VideoInput:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        sourceUrl: { type: string }
+      required: [title, sourceUrl]
+    VideoComment:
+      type: object
+      properties:
+        id: { type: string }
+        authorId: { type: string }
+        text: { type: string }
+        timestamp: { type: integer, minimum: 0, description: 'Non-negative timestamp in milliseconds' }
+        createdAt: { type: string, format: date-time }
+    PaymentIntentRequest:
+      type: object
+      properties:
+        amount: { type: integer, minimum: 1, description: 'Amount in the smallest currency unit (e.g., cents)' }
+        currency: { type: string, description: '3-letter currency code' }
+        metadata: { type: object }
+      required: [amount]
+    PaymentIntentResponse:
+      type: object
+      properties:
+        clientSecret: { type: string }
+        paymentIntentId: { type: string }
+    SubscriptionRequest:
+      type: object
+      properties:
+        priceId: { type: string }
+      required: [priceId]
+paths:
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                password: { type: string }
+                name: { type: string }
+                role: { type: string }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '400': { description: Validation error, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+  /api/courses:
+    get:
+      tags: [Courses]
+      summary: List courses
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: limit
+          schema: { type: integer }
+        - in: query
+          name: q
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Course' } }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+    post:
+      tags: [Courses]
+      summary: Create course
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseInput'
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Course' } } } }
+        '403': { description: Forbidden }
+  /api/courses/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Courses]
+      summary: Get course
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Course' } } } }
+        '404': { description: Not Found }
+    put:
+      tags: [Courses]
+      summary: Update course
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseInput'
+      responses:
+        '200': { description: Updated }
+  /api/courses/enroll:
+    post:
+      tags: [Courses]
+      summary: Enroll a student in a course
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollmentRequest'
+      responses:
+        '200': { description: Enrolled, content: { application/json: { schema: { $ref: '#/components/schemas/EnrollmentResponse' } } } }
+        '400': { description: Bad request }
+  /api/lessons:
+    post:
+      tags: [Lessons]
+      summary: Create a lesson
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LessonInput' }
+      responses:
+        '201': { description: Created }
+  /api/assignments:
+    get:
+      tags: [Assignments]
+      summary: List assignments
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Assignment' } } } } }
+    post:
+      tags: [Assignments]
+      summary: Create assignment
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssignmentInput' }
+      responses:
+        '201': { description: Created }
+  /api/assignments/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    put:
+      tags: [Assignments]
+      summary: Update assignment
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssignmentInput' }
+      responses:
+        '200': { description: Updated }
+    delete:
+      tags: [Assignments]
+      summary: Delete assignment
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '204': { description: Deleted }
+  /api/assignments/{id}/submit:
+    post:
+      tags: [Assignments]
+      summary: Submit assignment
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, properties: { content: { type: string }, fileUrl: { type: string } } }
+      responses:
+        '200': { description: Submitted }
+  /api/quizzes/{courseId}/quizzes:
+    post:
+      tags: [Quizzes]
+      summary: Create quiz for a course
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QuizInput' }
+      responses:
+        '201': { description: Created }
+  /api/quizzes/{id}/submit:
+    post:
+      tags: [Quizzes]
+      summary: Submit quiz answers
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QuizSubmission' }
+      responses:
+        '200': { description: Submitted }
+  /api/resources/{courseId}/resources:
+    post:
+      tags: [Resources]
+      summary: Upload or register a resource for a course
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResourceInput' }
+      responses:
+        '201': { description: Created }
+  /api/forum/{courseId}/posts:
+    post:
+      tags: [Forum]
+      summary: Create forum post in course
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ForumPostInput' }
+      responses:
+        '201': { description: Created }
+    get:
+      tags: [Forum]
+      summary: List forum posts for course
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/ForumPost' } } } } }
+  /api/notifications/create:
+    post:
+      tags: [Notifications]
+      summary: Create notification
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotificationInput' }
+      responses:
+        '201': { description: Created }
+  /api/notifications:
+    get:
+      tags: [Notifications]
+      summary: List notifications for current user
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Notification' } } } } }
+  /api/enrollment/enroll:
+    post:
+      tags: [Enrollment]
+      summary: Enroll student
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EnrollmentRequest' }
+      responses:
+        '200': { description: Enrolled, content: { application/json: { schema: { $ref: '#/components/schemas/EnrollmentResponse' } } } }
+  /api/progress/{courseId}/progress:
+    get:
+      tags: [Progress]
+      summary: Get progress for a course
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Progress' } } } }
+  /api/users:
+    get:
+      tags: [Users]
+      summary: List users (admin only)
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/User' } } } } }
+  /api/admin/analytics:
+    get:
+      tags: [Admin]
+      summary: Get admin analytics
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: OK }
+  /api/videos:
+    post:
+      tags: [Videos]
+      summary: Create video metadata
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VideoInput'
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Video' } } } }
+  /api/videos/{videoId}:
+    parameters:
+      - in: path
+        name: videoId
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Videos]
+      summary: Get video metadata
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Video' } } } }
+        '404': { description: Not found }
+  /api/videos/{videoId}/comments:
+    parameters:
+      - in: path
+        name: videoId
+        required: true
+        schema: { type: string }
+    post:
+      tags: [Videos]
+      summary: Add a timestamped comment
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text: { type: string }
+                timestamp: { type: integer, minimum: 0 }
+              required: [text]
+      responses:
+        '201': { description: Comment created }
+    get:
+      tags: [Videos]
+      summary: List video comments
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: limit
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/VideoComment' } }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+  /api/payments/create-payment-intent:
+    post:
+      tags: [Payments]
+      summary: Create payment intent
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentIntentRequest'
+      responses:
+        '200': { description: Payment intent created, content: { application/json: { schema: { $ref: '#/components/schemas/PaymentIntentResponse' } } } }
+  /api/payments/subscribe:
+    post:
+      tags: [Payments]
+      summary: Create a subscription
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRequest'
+      responses:
+        '200': { description: Subscription created }
+  /api/payments/webhook:
+    post:
+      tags: [Payments]
+      summary: Payment provider webhook (Stripe)
+      security: []
+      description: |
+        This endpoint requires the raw request body for signature verification. Use `STRIPE_WEBHOOK_SECRET` to validate.
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200':
+          description: Handled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+                  type:
+                    type: string
+
