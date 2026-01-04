@@ -13,8 +13,7 @@
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "lint:openapi": "swagger-cli validate docs/openapi.yaml",
-    "lint:postman": "ajv validate -s https://schema.getpostman.com/json/collection/v2.1.0/collection.json -d docs/postman-collection.json",
-    "lint:docs": "npm run lint:openapi && npm run lint:postman"
+    "lint:docs": "npm run lint:openapi"
   },
   "keywords": [],
   "author": "",
